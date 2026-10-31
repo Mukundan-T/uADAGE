@@ -10,10 +10,9 @@ Usage
 
 """
 
-import keras
+from tensorflow import keras
+from tensorflow.keras import regularizers
 from adage import DenseTranspose as dt
-from adage import UltraRegularizer
-# from tensorflow.keras import regularizers
 
 class LinkedAE(keras.models.Sequential):
     """
@@ -36,39 +35,27 @@ class LinkedAE(keras.models.Sequential):
 
     """
 
-    def __init__(self, encoding_dim = 10, act1="tanh", d=0, kl1=0, kl2=0, init="tanh", lambda_ultra = 0):
+    def __init__(self, encoding_dim = 10, act2="tanh", d=0,kl1=0,kl2=0,init="tanh" ):
         """
         LinkedAE is a class for a linked, tied-weights autoencoder. It inherits
         the keras Sequential class.
     
         Args:
             encoding_dim (int): Encoding dimensions, nodes in hidden layer
-            act1 (str): The encoder/decoder activation function 
+            act2 (str): The decoder activation function 
             d (flt): The proportion of input features to drop in dropout layer
         """
         super().__init__()
-
-        if lambda_ultra > 0:
-            active_regularizer = UltraRegularizer(lambda_ultra=lambda_ultra)
-        elif kl1 > 0:
-            active_regularizer = keras.regularizers.l1(l1=kl1)
-        elif kl2 > 0:
-            active_regularizer = keras.regularizers.l2(l2=kl2)
-        else:
-            active_regularizer = None # No regularization
-
-        self.dense_1 = keras.layers.Dense(
-            encoding_dim,
-            activation = act1,
-            kernel_regularizer = active_regularizer,
-            kernel_initializer = init
-        )
+        self.dense_1 = keras.layers.Dense(encoding_dim, kernel_regularizer = regularizers.l1_l2(l1=kl1, l2=kl2),
+                                         kernel_initializer = init)
         self.d = keras.layers.Dropout(d)
-        self.act1 = act1
-        self.decoder = dt.DenseTranspose(self.dense_1, activation=self.act1)
+        self.act2 = act2
+        self.decoder = dt.DenseTranspose(self.dense_1, activation=self.act2)
         self.add(self.d)
         self.add(self.dense_1)
         self.add(self.decoder)
+
+
 
     def call(self,inputs):
         """Initialized the LinkedAE with an input dataset"""
