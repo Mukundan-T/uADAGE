@@ -16,7 +16,7 @@ sys.path.append(str(project_root))
 
 from json import load
 from numpy import savetxt
-from adage import SeqAdage
+from m_adage import SeqAdage
 
 def load_hps(filename):
     """
@@ -46,7 +46,7 @@ def run_model(run_id, filename, optimal_hps):
         enc_dim = optimal_hps['units'],
         kl1 = optimal_hps['kl1'],
         kl2 = optimal_hps['kl2'],
-        act = optimal_hps['act1'],
+        act1 = optimal_hps['act1'],
         act2 = optimal_hps['act2'],
         epochs = 50,
         init = optimal_hps['init'],
