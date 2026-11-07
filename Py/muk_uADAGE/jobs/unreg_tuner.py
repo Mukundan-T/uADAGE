@@ -14,7 +14,7 @@ from pathlib import Path
 project_root = Path(__file__).resolve().parents[2]
 sys.path.append(str(project_root))
 
-from adage import SeqAdage
+from m_adage import SeqAdage
 from json import dump
 
 def run_search(filename):
@@ -31,7 +31,7 @@ def run_search(filename):
         k2 = [0, 0, 0.1],
         d = [0, 0, 0.1]
     )
-    return best_hps
+    return best_hps, tuner
 
 def save_results(best_hps, output_path):
     """
@@ -50,7 +50,7 @@ def main():
     filename = data_dir / "ecmg_lcn01_medmean_normal_muk.csv"
     output_path = data_dir / "unreg_tuner_results.json"
     
-    best_hps = run_search(filename)
+    best_hps, tuner = run_search(filename)
     save_results(best_hps, output_path)
 
 if __name__ == "__main__":

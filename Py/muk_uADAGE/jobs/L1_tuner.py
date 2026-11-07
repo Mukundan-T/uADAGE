@@ -14,22 +14,10 @@ from pathlib import Path
 project_root = Path(__file__).resolve().parents[2]
 sys.path.append(str(project_root))
 
-from adage import SeqAdage
+from m_adage import SeqAdage
 from json import dump, load
 
-# def load_hps(filename):
-#     """
-#     Given the filepath to the optimal baseline hyperparameter values,
-#     return them in a dictionary.
-
-#     :param filename: a string containing the relative path to the file
-#     :return: a dictionary with the optimal values
-#     """
-#     with open(filename, "r") as f:
-#         optimal_hps = load(f)
-#     return optimal_hps
-
-def run_search(filename): # hps):
+def run_search(filename):
     """
     Run the actual hyperparameter search solely for L1 weight on the 
     given compendium.
@@ -40,19 +28,11 @@ def run_search(filename): # hps):
     model_trainer = SeqAdage.SeqAdage(str(filename))
     best_hps, tuner = model_trainer.tune_model(
         seed = 42,
-        # u = [hps["units"], hps["units"], 1],
         d = [0, 0, 0.1],
-        # a1 = [hps["act1"]],
-        # a2 = [hps["act2"]],
-        # i = [hps["init"]],
-        k1 = [0.04, 1, 0.04], # *** Hyperparameter of interest ***
-        k2 = [0, 0, 0.1],
-        # l = [hps["lr"], hps["lr"], 0.1],
-        # b = [hps["bs"], hps["bs"], 1],
-        # m = [hps["mm"], hps["mm"], 0.1],
-        # sh = [hps["shuffle"]]
+        k1 = [0.01, 0.2, 0.01], # *** Hyperparameter of interest ***
+        k2 = [0, 0, 0.1]
     )
-    return best_hps
+    return best_hps, tuner
 
 def save_results(best_hps, output_path):
     """
@@ -68,12 +48,10 @@ def save_results(best_hps, output_path):
 
 def main():
     data_dir = project_root / "muk_uADAGE" / "data"
-    # hps_file = data_dir / "ec_unreg_model_hps.json"
     filename = data_dir / "ecmg_lcn01_medmean_normal_muk.csv"
     output_path = data_dir / "L1_tuner_results.json"
 
-    # prev_hps = load_hps(hps_file)
-    best_hps = run_search(filename) # prev_hps)
+    best_hps, tuner = run_search(filename)
     save_results(best_hps, output_path)
 
 if __name__ == "__main__":
