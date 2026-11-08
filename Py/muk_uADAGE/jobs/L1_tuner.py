@@ -10,7 +10,7 @@ Date: October 31, 2026
 import sys
 from pathlib import Path
 
-# Prepend the correct prefix to load modules from adage/
+# Prepend the correct prefix to load modules from m_adage/
 project_root = Path(__file__).resolve().parents[2]
 sys.path.append(str(project_root))
 
@@ -30,7 +30,9 @@ def run_search(filename):
         seed = 42,
         d = [0, 0, 0.1],
         k1 = [0.01, 0.2, 0.01], # *** Hyperparameter of interest ***
-        k2 = [0, 0, 0.1]
+        k2 = [0, 0, 0.1],
+        u1 = [0, 0, 0.1],
+        u2 = [0, 0, 0.1]
     )
     return best_hps, tuner
 
