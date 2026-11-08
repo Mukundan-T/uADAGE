@@ -14,8 +14,9 @@ import tensorflow as tf
 from keras.regularizers import Regularizer
 
 class UltraRegularizer(Regularizer):
-    def __init__(self, lambda_ultra = 0.01, num_triplets = 256):
-        self.lambda_ultra = tf.Variable(lambda_ultra, dtype = tf.float32, trainable = False)
+    def __init__(self, u1 = 0.0, u2 = 0.0, num_triplets = 256):
+        self.u1 = float(u1)
+        self.u2 = float(u2)
         self.num_triplets = num_triplets
     
     def __call__(self, weight_matrix):
@@ -48,15 +49,21 @@ class UltraRegularizer(Regularizer):
         
         # Sort distances in descending order
         distances = tf.stack([d_AB, d_BC, d_AC], axis = 1)
-        sorted_distances = tf.sort(distances, axis = 1, direction = 'DESCENDING')
+        sorted_distances = tf.sort(distances, axis = 1, direction = "DESCENDING")
         
         # Get longest and 2nd-longest sides
         d1 = sorted_distances[:, 0]
         d2 = sorted_distances[:, 1]
         
         # Calculate and return weighted penalty
-        penalty = tf.reduce_mean(tf.square(d1 - d2))
-        return self.lambda_ultra * penalty
+        if self.u1 != 0:
+          return self.u1 * tf.reduce_mean(tf.abs(d1 - d2))
+        
+        return self.u2 * tf.reduce_mean(tf.square(d1 - d2))
     
     def get_config(self):
-        return {'lambda_ultra': float(self.lambda_ultra.numpy())}
+        return {
+            "u1": self.u1,
+            "u2": self.u2,
+            "num_triplets": self.num_triplets
+        }
