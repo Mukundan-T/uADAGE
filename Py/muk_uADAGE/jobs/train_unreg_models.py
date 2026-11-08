@@ -10,7 +10,7 @@ Date: October 31, 2026
 import sys
 from pathlib import Path
 
-# Prepend the correct prefix to load modules from adage/
+# Prepend the correct prefix to load modules from m_adage/
 project_root = Path(__file__).resolve().parents[2]
 sys.path.append(str(project_root))
 
