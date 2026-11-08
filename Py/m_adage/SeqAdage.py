@@ -9,10 +9,9 @@ November 5, 2026
 
 *** This implementation of SeqAdage edits some things in the original version: ***
     - Sets a configurable constant NOISE_FACTOR
-    - * Important: Adds 'act1', 'tied' for encoding, passed to LinkedAE
+    - * Important: Adds 'act1', 'tied', 'shuffle' for encoding, passed to LinkedAE
     - Defined _set_seed() to get NumPy, Python, and TensorFlow seeds for reproducibility
     - Explicitly did validation split through _split_train_validation()
-    - ** Should we pass in shuffle in train_model_variable()? **
     - Pre-training now changed to train for at least one epoch
     - ** Super important: x_train_noisy and x_train are swapped to correct order in 
     fine_tune_model() TWICE
@@ -54,6 +53,8 @@ class SeqAdage(Adage.Adage):
         mm (flt): Momentum for fitting, 0-1
         lr (flt): Learning rate, 0-1
         v (int): Verbose, 1-True, 0-False
+        u1 (flt): Amount of U1 (ultrametric) regularization, if any
+        u2 (flt): Amount of U2 (ultrametric) regularization, if any
 
     Methods:
         prep_data() : prepares data by introducing noise
@@ -74,7 +75,7 @@ class SeqAdage(Adage.Adage):
     def __init__(self, input_file, seed = 100, enc_dim = 10, kl1 = 0.0, kl2 = 0.0,
                  act1 = "tanh", act2 = "tanh", tied = True, epochs = 50,
                  init = "glorot_uniform", batch_size = 10, dropout = 0.0, mm = 0.0,
-                 lr = 0.01, v = 1
+                 lr = 0.01, v = 1, u1 = 0.0, u2 = 0.0, shuffle = True
                 ):
         """
         Constructor for SeqAdage with hyperparameters.
@@ -99,6 +100,9 @@ class SeqAdage(Adage.Adage):
             mm (flt): Momentum for fitting, 0-1
             lr (flt): Learning rate, 0-1
             v (int): Verbose, 1-True, 0-False
+            u1 (flt): Amount of U1 (ultrametric) regularization, if any
+            u2 (flt): Amount of U2 (ultrametric) regularization, if any
+            shuffle: If the batches should be shuffled or not
         """
         self.input_file = input_file
 
@@ -120,8 +124,22 @@ class SeqAdage(Adage.Adage):
 
         self.kl1 = kl1
         self.kl2 = kl2
+        self.u1 = u1
+        self.u2 = u2
 
         self.v = v
+        self.shuffle = shuffle
+
+        if kl1 != 0:
+            self.reg_type = "l1"
+        elif kl2 != 0:
+            self.reg_type = "l2"
+        elif u1 != 0:
+            self.reg_type = "u1"
+        elif u2 != 0:
+            self.reg_type = "u2"
+        else:
+            self.reg_type = None
 
         self.all_comp = pd.read_csv(
             input_file,
@@ -131,13 +149,6 @@ class SeqAdage(Adage.Adage):
         self.gene_num = self.all_comp.shape[0]
         self.autoencoder = self._build_autoencoder()
         self.history = None
-
-        # Don't call --> model may not be trained yet, and history doesn't exist
-        # super().__init__(
-        #     self.autoencoder,
-        #     self.history,
-        #     self.all_comp
-        # )
 
     def _set_seed(self, seed = None):
         """
@@ -163,7 +174,10 @@ class SeqAdage(Adage.Adage):
             kl1 = self.kl1,
             kl2 = self.kl2,
             init = self.init,
-            tied = self.tied
+            tied = self.tied,
+            u1 = self.u1,
+            u2 = self.u2,
+            reg_type = self.reg_type
         )
         return model
 
@@ -226,8 +240,6 @@ class SeqAdage(Adage.Adage):
         """
         Train the autoencoder for a specified number of epochs.
         """
-        self._set_seed()
-
         x_clean, x_noisy = self.prep_data()
         
         (
@@ -259,7 +271,7 @@ class SeqAdage(Adage.Adage):
             ),
             epochs = num_epochs,
             batch_size = self.batch_size,
-            shuffle = True,
+            shuffle = self.shuffle,
             verbose = self.v,
         )
 
@@ -312,6 +324,11 @@ class SeqAdage(Adage.Adage):
         if init is not None:
             self.init = init
         
+        if self.kl1 != 0:
+            self.reg_type = "l1"
+        elif self.kl2 != 0:
+            self.reg_type = "l2"
+        
         # Get weights after pre-training
         weights_prev, b_weights_prev, d_weights_prev = self.autoencoder.get_weights()[0:3]
 
@@ -345,7 +362,8 @@ class SeqAdage(Adage.Adage):
             epochs = 1,
             batch_size = self.batch_size,
             validation_split = 0.1,
-            verbose = self.v
+            verbose = self.v,
+            shuffle = self.shuffle
         )
         
         # Get initialized weights as background distribution
@@ -455,7 +473,8 @@ class SeqAdage(Adage.Adage):
                    i = ["glorot_uniform", "glorot_normal"], 
                    k1 = [0.0, 0.15, 0.005], k2 = [0.0, 0.9, 0.05], 
                    l = [0.001, 0.1, 0.01], b = [5, 100, 5], m = [0.0, 0.9, 0.1], 
-                   sh = [False, True], tied = [True, False]
+                   sh = [False, True], tied = [True, False], u1 = [0.0, 0.15, 0.005],
+                   u2 = [0.0, 0.9, 0.05]
                   ):
         """
         Tune ADAGE hyperparameters.
@@ -470,13 +489,13 @@ class SeqAdage(Adage.Adage):
             name = "units",
             min_value = u[0],
             max_value = u[1],
-            step = u[2],
+            step = u[2]
         )
         hp.Float(
             name = "dropout",
             min_value = d[0],
             max_value = d[1],
-            step = d[2],
+            step = d[2]
         )
         
         hp.Choice("act1", values = a1)
@@ -489,38 +508,51 @@ class SeqAdage(Adage.Adage):
             "kl1",
             min_value = k1[0],
             max_value = k1[1],
-            step = k1[2],
+            step = k1[2]
         )
         hp.Float(
             "kl2",
             min_value = k2[0],
             max_value = k2[1],
-            step = k2[2],
+            step = k2[2]
         )
 
         hp.Float(
             "lr",
             min_value = l[0],
             max_value = l[1],
-            step = l[2],
+            step = l[2]
         )
 
         hp.Int(
             "bs",
             min_value = b[0],
             max_value = b[1],
-            step = b[2],
+            step = b[2]
         )
         hp.Float(
             "mm",
             min_value = m[0],
             max_value = m[1],
-            step = m[2],
+            step = m[2]
         )
         hp.Choice("shuffle", values = sh)
 
+        hp.Float(
+          "u1",
+          min_value = u1[0],
+          max_value = u1[1],
+          step = u1[2]
+        )
+        hp.Float(
+          "u2",
+          min_value = u2[0],
+          max_value = u2[1],
+          step = u2[2]
+        )
+        
         tuner = keras_tuner.Hyperband(
-            hypermodel = AdageHyperModel.AdageHyperModel(input_shape = self.gene_num),
+            hypermodel = AdageHyperModel.AdageHyperModel(input_dim = self.gene_num),
             hyperparameters = hp,
             objective = "val_loss",
             max_epochs = self.epochs,

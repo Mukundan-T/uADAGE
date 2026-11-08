@@ -29,9 +29,9 @@ class AdageHyperModel(kt.HyperModel):
     by SeqAdage.tune_model().
     """
 
-    def __init__(self, input_shape):
+    def __init__(self, input_dim):
         super().__init__()
-        self.input_shape = input_shape
+        self.input_dim = input_dim
 
     def build(self, hp):
         enc_dim = hp.get("units")
@@ -44,9 +44,23 @@ class AdageHyperModel(kt.HyperModel):
         kl2 = hp.get("kl2")
         lr = hp.get("lr")
         mm = hp.get("mm")
+        u1 = hp.get("u1")
+        u2 = hp.get("u2")
 
+        # Define the correct reg_type
+        if kl1 != 0:
+            reg_type = "l1"
+        elif kl2 != 0:
+            reg_type = "l2"
+        elif u1 != 0:
+            reg_type = "u1"
+        elif u2 != 0:
+            reg_type = "u2"
+        else:
+            reg_type = None
+        
         model = LinkedAE.LinkedAE(
-            input_dim = self.input_shape,
+            input_dim = self.input_dim,
             encoding_dim = enc_dim,
             act1 = act1,
             act2 = act2,
@@ -54,17 +68,19 @@ class AdageHyperModel(kt.HyperModel):
             kl1 = kl1,
             kl2 = kl2,
             init = init,
-            tied = tied
+            tied = tied,
+            u1 = u1,
+            u2 = u2,
+            reg_type = reg_type
         )
 
-        model.build((None, self.input_shape))
+        model.build((None, self.input_dim))
         optimizer = optimizers.SGD(learning_rate = lr, momentum = mm)
         
         model.compile(
             optimizer = optimizer,
             loss = tf.keras.losses.MeanSquaredError()
         )
-
         return model
 
     def fit(self, hp, model, *args, **kwargs):

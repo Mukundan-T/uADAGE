@@ -26,7 +26,7 @@ November 5, 2026
 
 from tensorflow import keras
 from tensorflow.keras import regularizers
-from m_adage import DenseTranspose
+from m_adage import DenseTranspose, UltraRegularizer
 
 
 class LinkedAE(keras.Model):
@@ -49,13 +49,15 @@ class LinkedAE(keras.Model):
     """
     
     def __init__(self, input_dim, encoding_dim = 10, act1 = "tanh", act2 = "tanh", dropout = 0.0,
-                 kl1 = 0.0, kl2 = 0.0, init = "glorot_uniform", tied = True, **kwargs
+                 kl1 = 0.0, kl2 = 0.0, init = "glorot_uniform", tied = True, u1 = 0.0, u2 = 0.0,
+                 reg_type = None, **kwargs
                 ):
         """
         Tied weight-autoencoder class.
         """
         super().__init__(**kwargs)
 
+        self.input_dim = input_dim
         self.encoding_dim = encoding_dim
         self.act1 = act1
         self.act2 = act2
@@ -64,11 +66,21 @@ class LinkedAE(keras.Model):
         self.kl2 = kl2
         self.init = init
         self.tied = tied
+        self.u1 = u1
+        self.u2 = u2
+        self.reg_type = reg_type
 
-        regularizer = regularizers.l1_l2(
-            l1 = kl1,
-            l2 = kl2,
-        )
+        # Select regularizer
+        if reg_type == "l1":
+            regularizer = regularizers.L1(kl1)
+        elif reg_type == "l2":
+            regularizer = regularizers.L2(kl2)
+        elif reg_type == "u1":
+            regularizer = UltraRegularizer.UltraRegularizer(u1 = u1)
+        elif reg_type == "u2":
+            regularizer = UltraRegularizer.UltraRegularizer(u2 = u2)
+        else:
+            regularizer = None
 
         self.dropout_layer = keras.layers.Dropout(
             dropout,
@@ -98,35 +110,6 @@ class LinkedAE(keras.Model):
                 name = "decoder",
             )
 
-    # if tied == True --> decoder.units == None : False AND True
-    # if tied == False --> decoder.units == input_dim != None : True and False
-    # So the conditional in build never runs?
-    # Then what is the purpose of build()?
-    # We comment this for now!
-  
-    # def build(self, input_shape):
-    #     """
-    #     For an untied autoencoder, the decoder output dimension must equal
-    #     the input dimension, which isn't known until build time.
-    #     """
-    #     input_dim = int(input_shape[-1])
-
-    #     if not self.tied and self.decoder.units is None:
-    #         regularizer = regularizers.l1_l2(
-    #             l1 = self.kl1,
-    #             l2 = self.kl2,
-    #         )
-
-    #         self.decoder = keras.layers.Dense(
-    #             input_dim,
-    #             activation = self.act2,
-    #             kernel_regularizer = regularizer,
-    #             kernel_initializer = self.init,
-    #             name = "decoder",
-    #         )
-
-    #     super().build(input_shape)
-
     def encode(self, inputs, training = False):
         """
         Return hidden-layer activities using the actual encoder. Dropout is only 
@@ -147,6 +130,7 @@ class LinkedAE(keras.Model):
 
         config.update(
             {
+                "input_dim": self.input_dim,
                 "encoding_dim": self.encoding_dim,
                 "act1": self.act1,
                 "act2": self.act2,
@@ -155,7 +139,9 @@ class LinkedAE(keras.Model):
                 "kl2": self.kl2,
                 "init": self.init,
                 "tied": self.tied,
+                "u1": self.u1,
+                "u2": self.u2,
+                "reg_type": self.reg_type
             }
         )
-
         return config
