@@ -34,7 +34,9 @@ def run_search(filename):
         d = [0, 0, 0.1],
         k1 = [0, 0, 0.1],
         k2 = [0, 0, 0.1],
-        u2 = [0, 0, 0.1]
+        u1 = [0.01, 0.2, 0.01], # *** Hyperparameter of interest ***
+        u2 = [0, 0, 0.1],
+        reg_type = "U1"
     )
     return best_hps, tuner
 

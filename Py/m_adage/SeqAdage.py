@@ -474,7 +474,7 @@ class SeqAdage(Adage.Adage):
                    k1 = [0.0, 0.15, 0.005], k2 = [0.0, 0.9, 0.05], 
                    l = [0.001, 0.1, 0.01], b = [5, 100, 5], m = [0.0, 0.9, 0.1], 
                    sh = [False, True], tied = [True, False], u1 = [0.0, 0.15, 0.005],
-                   u2 = [0.0, 0.9, 0.05]
+                   u2 = [0.0, 0.9, 0.05], reg_type = "combined"
                   ):
         """
         Tune ADAGE hyperparameters.
@@ -557,7 +557,7 @@ class SeqAdage(Adage.Adage):
             objective = "val_loss",
             max_epochs = self.epochs,
             overwrite = True,
-            directory = "/scratch/group/p.cis262240.000/mukundan/uADAGE/Py/muk_uADAGE/data/hyperband_search_dir",
+            directory = f"/scratch/group/p.cis262240.000/mukundan/uADAGE/Py/muk_uADAGE/data/{reg_type}/hyperband_search_dir",
             project_name = (
                 os.path.basename(self.input_file).removesuffix(".csv")
                 + "_"
