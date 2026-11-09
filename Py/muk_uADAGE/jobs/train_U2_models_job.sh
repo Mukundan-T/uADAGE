@@ -11,12 +11,12 @@
 #SBATCH --job-name=train_uadage_U2_models
 #SBATCH --time=0-08:00:00
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=10
+#SBATCH --ntasks-per-node=25
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=64G
 #SBATCH --mail-type=FAIL,END
 #SBATCH --mail-user=thanigam@union.edu
-#SBATCH --array=1-50%10
+#SBATCH --array=1-50%25
 #SBATCH -o /scratch/user/u.mt372094/logs/%x-%A_%a.out
 #SBATCH -e /scratch/user/u.mt372094/logs/%x-%A_%a.err
 
